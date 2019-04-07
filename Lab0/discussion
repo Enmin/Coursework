@@ -1,0 +1,36 @@
+Lab0-104756697.tar
+
+./P0_check.sh 104756697
+
+readme should include:
+NAME
+EMAIL
+ID:
+
+To install: gcc libc make gdb
+
+posix
+strerror
+getopt
+tar
+gdb
+
+Return 0 if programs ends properly
+Unrecognized arguments: return 1
+Arguments:
+	1 --input	return 2 if invalid input
+	2 --output	return 3 if invalid output
+	3 --segfault
+	4 --catch	return 4 
+	add preferred command line options
+
+both are screen shots:
+backtrace.png
+breakpoints.png
+
+Makefile:
+	1 lab0 executable
+	  -Wall -Wextra
+	2 check
+	3 clean
+	4 dist

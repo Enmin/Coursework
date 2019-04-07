@@ -1,0 +1,49 @@
+NAME:Enmin Zhou
+EMAIL:zhouem14@163.com
+ID:104756697
+Description: listtest.sh and addtest.sh are scripts used to generate
+data respectively for lab2_list.csv and lab2_add.csv
+
+Question 2.1.1:
+As the add function only need a few instructions, it can be done in
+a very limited amount of time. So before the next thread being created,
+the add function of the previous one often finishes and there will be
+no race conditions (conflicts). This is why when the number of iterations
+is small, we find no conflicts and counter is always 0. When we increase
+the number of iterations to a very large amount, there will be conficts 
+because the it takes a thread longer time to finish #iteration times add
+function, which may ends after the next thread started.
+
+Question 2.1.2:
+In --yield optioin causes the program to run 'sched_yield()' function
+every time the add function is called. The additional time goes to the 
+process of scheduler in 'sched_yield'. It is not possible to get
+the proper per-op timings as it takes more time when there are mutiple
+threads of the same level running at the same time.
+
+Question 2.1.3:
+Before we reach the limitation of the cpu processing ability, increasing
+the iterations can decrease the timing for each iteration cost because
+the time spent on operations other than 'add function' will be divided
+to a smaller value. (other operations such as 'creating threads' and
+'joining threads'). To find the correct number of timing cost, we can get
+those operations other than 'add function' out of the start and end operation.
+
+Question 2.1.4:
+When the number of threads is low, the lock concentration is low and every lock
+is going to be unlocked very quickly, less time for checking. When the number
+of threads increases, the time spent on checking increases so the operations slow
+down.
+
+Question 2.2.1:
+Spin lock and mutex lock have their best efficiency at different amounts of
+threads. This explains why for different number of threads, the cost per
+operations varies among cas, mutex and spin. When we increase the iterations, the
+graph is linearly increasing along with number of iterations, because iteration only
+decides the frequency of lock request. The relative increase rates of cost per operation
+slows down as the number of threads increases as the performance(create & join) other 
+than iterations is averaged down.
+Question 2.2.2:
+Same as mutex lock, but it handles better than mutex lock when the number of threads
+is less than 8. The relative increase rates against # of threads and # of iterations
+is almost as same as those of mutex lock.

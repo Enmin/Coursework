@@ -1,0 +1,54 @@
+Midterm: 5th week Tuesday Oct 30
+
+asynchrony: proceed at the same time
+Binary Configuration Model: do research
+
+Week1 Lec1 
+
+Funtinoality in OS:
+1. as necessary and little as possible
+2. Must requires use of prvileged instruction, the manipulation of OS data structure, maintain security, trust or resource integrity.
+3. Should be commonly needed by applications, do not actually be implemented inside OS
+4. Performance excuse would be something may run faster if done in OS
+
+Abstraction:
+1. simpler and better suited for programmers and users
+
+Serially Reusable Resources:
+Time multiplexing
+access control
+graceful transitions
+
+Partitionable Resources:
+Spatial Multiplexing
+graceful transitions
+
+Shareable Resources:
+no wait for access to resource
+no ownership of resources by processes
+no need of graceful transitions
+
+Why OS converge?
+Expansive to build and maintain
+
+
+Operating Systems Services
+Hot-plug: keep track of all the hardwares plugging into OS
+
+
+Library(shared code):
+In Ram
+Static Library: take a copy and put into the module
+Shared Library: do not copy the code, make a notation in the module; when the app run, bring the copy of library into RAM, and another app will use the same copy in RAM if it needs to.
+Dynamic Library: make an indication in module; when the app run to call the library function, only the libraray functions that are called will be loaded into RAM
+Whether the libraray codes in RAM can be shared depends on architecture, usually we just create another copy.
+
+State can be saved
+
+Program Descriptors (store the state and other information of a process) are stored in specific reserved space in RAM
+
+
+Limited Direct Execution
+Clock Interrupts
+Queue: real time, short quantum, medium quantum, long quantum
+

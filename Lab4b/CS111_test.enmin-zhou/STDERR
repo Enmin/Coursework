@@ -1,0 +1,2 @@
+./lab4b: unrecognized option '--bogus'
+Invalid Arugments, correct usage: ./lab4b [--period=#], [--scale=] [--log=filename]

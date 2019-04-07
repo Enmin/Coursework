@@ -1,0 +1,46 @@
+NAME:Enmin Zhou
+EMAIL:zhouem14@163.com
+ID:104756697
+Question 2.3.1:
+	In this question, we do not include time that is spent on system call
+outside the thread running functions. For 1 and 2, the small number
+of threads indicate that there will not be much competition between
+threads, so the time was mostly spend on list operation rather than
+lock operations.
+	The lock operation code is the most expensive part as all the threads
+tend to get lock get wait for lock, thus spending lots of cpu time.
+	Since the spin_lock keeps spinning(checking) for lock instead of blocking,
+it wasts a large amount of cpu time. Only one(num of sublist) thread is 
+allowed to get the lock each time, so others will keep waiting for that one.
+	The mutex lock blocks other threads and let them sleep when one thread
+gets the lock, so most of cpu time is spent on list operations.
+
+Question 2.3.2:
+	The most consuming part is when thread tries to check if it can get
+the lock (spinning).Codes: while(__sync_lock_test_and_set(&spin_lock[list_num[i]], 1));
+	When the number of threads gets large, more cpu time will be spent on
+checking the lock by threads who do not get the lock and less time is spent on
+list opertaions, respectively.
+
+Question 2.3.3:
+	Because the threads become more, the total wait time will become more
+since only (num of sublist) thread can get mutex lock at a time.
+	The completion time per operation is dependent on the list  operation cpu time
+instead of number of threads. It rises less dramatically because the list operation
+is not affected by number of threads.
+	The total wait_for_lock_time get larger when number of threads gets larger.
+Since the list operation cpu time by each thread does not change, wait time rises
+faster than the total time(list operation time + wait time) arithmetically.
+
+Question 2.3.4:
+	The performance for synchronized methods as a function of number
+of threads is higher when number of lists gets higher. The concentration of lock
+competition becomes smaller as the list is divided to sublists and the throughput increases.
+When the number of threads increase, the concentration of each sublists will grow 
+and might grow back to the concentration of one single list if # of threads gets large 
+enough, so the throughput drops along with the number of threads.
+	There is a threshold where the list operation significance will exceed that of
+wait time when the number of sublists keeps increasing. By that time, the throughput
+will not drop any further along with the number of sublists.
+	So it is no reasonable to suggest the hroughput of an N-way partitioned list should 
+be equivalent to the throughput of a single list with fewer (1/N) threads
