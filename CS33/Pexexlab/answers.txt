@@ -1,0 +1,43 @@
+1.
+In the trace, the wrong answer starts from here:
+
+547920	48 8d 04 ad 02 00 00 00	lea 0x2(,%rbp,4),%rax	rax=7fffffff73ab3b42
+
+In the rbp, the value is "dfffffffdceaced0", which is correct answer
+of the multiplication of "1250284240 -1844255039". However, it shifts
+the rbp to left by 2 and then add 2 to it, so the last 2 bits is "10", and the
+correct number is changed. So the final result is modified. Though after
+some codes, the result is shited right by 2, but the return value is not
+the correct arithmatic value. And the final result is a result of 
+overflow error. (2305843008625102544, wrong result)
+
+2.
+As the operation done above, the final result is firstly shifted to left
+by 2 and then shifted back again with arithmatic shift, so the total
+bits used by the Elisp is 62. So the most negative value is 
+-2^61, which is -2305843009213693952
+
+3.
+When I checked the comand:
+
+emacs -Q -batch -eval '(print (* most-positive-fixnum most-positive-fixnum))'
+
+also ouputs 1, it must be the overflow problem of Elisp.
+The most-positive-fixnum of Elisp is 2305843009213693951, which is 2^61-1.
+the squaring of 0x1fff ffff ffff ffff is 0x3ff ffff ffff ffff c000 0000 0000 0001. Therefore the result 62 bits left is 1, and square of 1 is also 1.
+So the final output is 1.
+
+4.
+It would not change anything because the Elisp had already implemented
+the wrapping of overflow problems. So -fwrapv would not change anything.
+
+5.
+On the second time around the
+time zone format string start points to already allocated memory from
+the previous function call. On the second iteration the source string and
+destination string point to the same block of memory and share one terminating
+character. The destination string is slightly ahead of the source. Thus when
+copying, strcpy writes over the terminating character and keeps writing
+infinitely. This quickly uses up all the available memory and causes the
+segmentation fault. The function that calls strcpy is emacs_setenv_TZ in
+editfns.c.

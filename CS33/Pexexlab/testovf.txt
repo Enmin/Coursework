@@ -1,0 +1,51 @@
+-O2:
+When we compile the code with -O2, the overflow is undefined
+behavior in C language so that mathematically, the n+9223372036854775807 is 
+always larger than n. And in the assembly code, the compiler use 'xorl' to
+do the arithmatics, and the reuslt of n^n is always 0.
+Therefore, the function always returns 0(false).
+
+xorl    %eax, %eax
+ret
+
+-O2 -fwrapv:
+Compile with -O2 -fwrapv with let the compiler take care of the overflow
+problem, so n+9223372036854775807 will overflow to a certain number after
+calculation, and it can be larger or smaller than n. So the result is the
+actual result returned by function.
+
+movabsq $9223372036854775807, %rax
+addq    %rdi, %rax
+cmpq    %rdi, %rax
+setl    %al
+ret
+
+-O2 -fsanitize=undefined:
+
+testovf:
+        pushq   %rbp
+        pushq   %rbx
+        movabsq $9223372036854775807, %rdx
+        subq    $8, %rsp
+        movq    big(%rip), %rbx
+        movq    %rbx, %rbp
+        addq    %rdx, %rbp
+        jo      .L6
+.L2:
+        cmpq    %rbp, %rbx
+        setg    %al
+        addq    $8, %rsp
+        popq    %rbx
+        popq    %rbp
+        ret
+.L6:
+        movq    %rbx, %rsi
+        movl    $.Lubsan_data0, %edi
+        call    __ubsan_handle_add_overflow
+        jmp     .L2
+
+The function treat the situation in two ways. If the n+9223372036854775807
+overflows, it calls the ubsan_handle_add_overflow to take over the problem,
+it prints an error message and then goes back to normal comparation.
+If the n+9223372036854775807 does not overflow, they will just compare it in
+a normal way.

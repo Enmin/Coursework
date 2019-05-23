@@ -1,0 +1,24 @@
+I first run the gdb of the file:
+gdb ~eggert/bin64/bin/emacs-25.2
+
+Then I set the breakpoint at Ftimes:
+(gdb) break Ftimes
+
+Then I use the command to show the assembly code:
+(gdb) set disassemble-next-line-on
+
+Then I use the command to trace the work I did:
+(gdb) set logging on
+
+Then I started gdb:
+run -Q -batch -eval '(print (* 1250284240 -1844255039))'
+
+During the process, I use 'step' and 'next' to go through the codes in Ftimes
+and arith_driver as the Ftimes return the function arith_driver:
+
+And I check the registers and memory when they are updated:
+info registers
+x/g address
+
+And I make those trace to my trace.tr
+

