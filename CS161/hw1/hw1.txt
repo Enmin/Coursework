@@ -1,0 +1,80 @@
+Question 1:
+When I try the first 10 numbers in lisp, it runs correctly.
+When the number gets bigger, the programm runs much slower,
+and I got 200 for PAD(20) and 922111 for PAD(50). When I 
+try PAD(70), the program seems to run endlessly, the reason
+is that the recursion takes up the memory in the stack and
+the programm stucks by the heap getting full.
+
+Question 2:
+With the same input N, the SUMS(N) + 1 = PAD(N). It means
+that to get the nth number in the Padovan Sequence, we need
+the value of nth - 1 times additions, which means value of
+nth - 1 times call to SUMS function.
+
+
+My test functions in hw1.lisp:
+(print (PAD 0))
+(print (SUMS 0))
+(print (PAD 1))
+(print (SUMS 1))
+(print (PAD 2))
+(print (SUMS 2))
+(print (PAD 4))
+(print (SUMS 4))
+(print (PAD 10))
+(print (SUMS 10))
+(print (PAD 20))
+(print (SUMS 20))
+(print (PAD 15))
+(print (SUMS 15))
+(print (PAD 28))
+(print (SUMS 28))
+(print (PAD 18))
+(print (SUMS 18))
+(print (PAD 50))
+(print (SUMS 50))
+(print (atom nil))
+(print (ANON '(((L E) F) T)))
+(print (ANON '(a L E F T)))
+(print (ANON '(a (L E) F T)))
+(print (ANON '42))
+(print (ANON 'FOO))
+(print (ANON '(((L E) F) T)))
+(print (ANON '(5 FOO 3.1 -0.2)))
+(print (ANON '(1 (FOO 3.1) -0.2)))
+(print (ANON '(((1 2) (FOO 3.1)) (BAR -0.2))))
+(print (ANON '(R (I (G (H T))))))
+
+My test results in hw1.lisp:
+1 
+0 
+1 
+0 
+1 
+0 
+2 
+1 
+12 
+11 
+200 
+199 
+49 
+48 
+1897 
+1896 
+114 
+113 
+922111 
+922110 
+T 
+(((? ?) ?) ?) 
+(? ? ? ? ?) 
+(? (? ?) ? ?) 
+? 
+? 
+(((? ?) ?) ?) 
+(? ? ? ?) 
+(? (? ?) ?) 
+(((? ?) (? ?)) (? ?)) 
+(? (? (? (? ?)))) 
