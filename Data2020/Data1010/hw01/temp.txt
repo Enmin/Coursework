@@ -1,0 +1,97 @@
+function p1()
+    for x in df1.id
+        print(df2[findfirst(isequal(x),df2.id),:])
+        return
+    end
+end
+p1()
+
+
+function p2()
+    temp = Dict((x.id => x for x in eachrow(df2)))
+    for x in df1.id
+        print(temp[x])
+        return
+    end
+end
+p2()
+
+--------------------------------------------------------------------------------
+using Random
+# card type
+struct card
+    Number
+    Color
+    Shape
+    Shading
+end
+
+# generate 81 cards
+function generate_cards()
+    return [card(num, col, shape, shading) for num in [1,2,3] 
+            for col in ["purple", "red", "green"] 
+                for shape in ["oval","squiggle","diamond"] for shading in ["striped","solid","outline"]]              
+end
+cards = generate_cards()
+
+# check if 3 cards form a set
+function check_set(group)
+    card1,card2,card3 = group
+    for n in fieldnames(card)
+        if !((getfield(card1, n) == getfield(card2, n) && getfield(card1, n) == getfield(card3, n)) ||
+            (getfield(card1, n) != getfield(card2, n) && getfield(card1, n) != getfield(card3, n) && getfield(card2, n) != getfield(card3, n)))
+            return false
+        end
+    end
+    return true
+end
+
+# find one set of 3 cards in a given group of cards
+function find_one_set(group)
+    for i = 1:length(group)-2
+        for j = i+1:length(group)-1
+            for k = j+1:length(group)
+                if check_set([group[i], group[j], group[k]])
+                    return [i, j, k]
+                end
+            end
+        end
+    end
+    return []
+end
+# a = find_one_set(cards[6:8])
+# a = find_one_set(cards[6:9])
+# print(a)
+
+# For shuffle, I just use shuffle() function in Random Pkg
+function play()
+    deck = generate_cards()
+    deck = shuffle(deck)
+    shown_cards = deck[1:12]
+    deck = deck[setdiff(1:end, [i for i in 1:12])]
+    while !(isempty(deck) && isempty(find_one_set(shown_cards)))
+        set_index = find_one_set(shown_cards)
+        shown_cards = shown_cards[setdiff(1:end, set_index)]
+        if length(deck) ≥ 3
+            for i in 1:3
+                push!(shown_cards, deck[i])
+            end
+            deck = deck[setdiff(1:end, [1,2,3])]
+        end
+        if length(shown_cards) == 18
+            return true
+        end
+    end
+    return false
+end
+
+function proportion(times)
+    acc = 0
+    for i in 1:times
+        if play()
+           acc = acc + 1
+        end
+    end
+    return acc / times
+end
+println(proportion(10000))

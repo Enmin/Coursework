@@ -1,0 +1,129 @@
+---
+title: "Assignment 4"
+output: pdf_document
+---
+
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+rm(list=ls())
+library(foreign)
+library(ggplot2)
+library(tidyverse)
+library(haven)
+library(MASS)
+
+library(dplyr)
+library(ISLR)
+library(glmnet)
+library(arm)
+library(coefplot)
+```
+
+
+**NAME: Enmin Zhou **  
+**DUE DATE: March 30th, 11:59pm** 
+
+## Problem 1 (100 pts)
+
+In the folder Assignment 4, you will find the data set called data-final.csv. This data set is from the Five Personality Data Set, and it collects on-line personality test (take a look to the codebook.txt in the folder Assignment 4). 
+
+
+
+  (a) (40 points)  Consider the first 50 variables of this data set (this should correspond to the codebook.txt variables). Perform the Principal Component (PC) analysis after having scaled the data. How many components will you retain based on the total variance explained by each component? Plot a bar plot (in ggplot) showing the proportion of variance explained by each PC (consider just the first 10 PC). Then, plot the PC that you have chosen in an heatmap, choose your own colour in three different tonality (where one should be white). How can you interpret this plot and the PC? Is there any link with the name of the data set ``the five big personalities''?
+  
+Answer: I will retain the first two PC, which are EXT1 and EXT2 because they have proportion of variance bigger than 0.1. This barplot ranks the first 10 important personalities from PCA analysis, with only 2 of theirs variance proportion higher than 0.1. There are in total 5 PC with variance proportion bigger than 0.05, which is the link with the name of the data set "the five big personalities". 
+  
+```{r}
+data = read.delim("data-final.csv")
+data = data[,1:50]
+df <- data.matrix(data) %>% na.omit()
+dataPCA <- prcomp(df, scale. = TRUE)
+plot(dataPCA)
+first10 <- summary(dataPCA)$importance[2,1:10]
+df_10 <- enframe(first10) %>% unnest(cols=c('name', 'value'))
+p1 <- ggplot(df_10, aes(x=reorder(name, -value), y=value)) + geom_bar(stat="identity")
+p1
+```
+```{r}
+eigs_B <- dataPCA$sdev^2
+eigs_B[1] / sum(eigs_B)
+eigs_B[2] / sum(eigs_B)
+eigs_B[3] / sum(eigs_B)
+p=dim(dataPCA$rotation)[1]
+label <- colnames(df)
+data_plot <- data.frame(Row =rep(1:p, times= 2), Col = rep(x=c('1', '2'), each=p), Y= matrix(c(dataPCA$rotation[,1:2]), p*2, 1))
+heatmap <- ggplot(data_plot, aes(Col, Row)) + geom_tile(aes(fill=Y))
+heatmap <- heatmap + scale_fill_gradient2(low="yellow", mid="white", high="red")
+heatmap <- heatmap + scale_y_discrete('',limits=label[p:1]) + theme_bw() + scale_x_discrete('PC')
+heatmap
+```
+
+  
+
+ 
+  
+  (b)  (40 points)  Perform a factor analysis model with 5 factors with no rotation. How is the total variance explained from the model? Now perform the factor analysis model with 5 factors and with the varimax rotation (remember to not scale the data). Will you keep the model with 5 common factors or will you add another one? Explain why. Plot in an heatmap the matrix of factor loadings matrix (similar to Figure 1) Again choose your own colour by considering three different tonality. Interpretation: Now interpret the factors. Explain what each factor represents and give a name to each factor based on its high loadings.
+  
+Answer: I will keep with 5 common factors since the 6th common factor explains 0.03 portion of variance, which is smaller than 0.05. In the following results, we have 5 factors: Factor1, Factor2, Factor3, Factor4, Factor5. Each of them represent that they are the potential factor behind the variables that they correspond to in the loadings. If the color is deeper, this factor will explain more of the variance of that variable in the original dataset. To give each factor a name, Factor1 will be CSN, Factor 2 will be OPN, Factor 3 will be AGB, Factor4 will be EXT and Factor5 will be EST.
+```{r}
+mod1=factanal(df, factors=5, rotation="none")
+mod2=factanal(df, factors=5, rotation="varimax")
+lort=loadings(mod2)
+lort
+```
+
+```{r}
+mod2_try6=factanal(df, factors=6, rotation="varimax")
+lort_try6=loadings(mod2_try6)
+lort_try6
+```
+
+```{r}
+data_plot <- data.frame(Row =rep(1:p, times= 5), Col = rep(x=c('1', '2', '3', '4', '5'), each=p), Y= matrix(c(lort[,1:5]), p*5, 1))
+heatmap <- ggplot(data_plot, aes(Col, y=Row)) + geom_tile(aes(fill=Y))
+heatmap <- heatmap + scale_fill_gradient2(low="yellow", mid="white", high="red")
+heatmap <- heatmap + scale_y_discrete('',limits=label[p:1]) + theme_bw() + scale_x_discrete('Factors')
+heatmap
+```
+  
+
+  
+  ```{r, out.width="0.9\\linewidth", include=TRUE, fig.align="center", fig.cap=c("Estimate"), echo=FALSE}
+knitr::include_graphics("HeatmapFA.pdf")
+```
+
+ (c)  (20 points)  Perform a bootstrap of 50 samples. For each of the bootstrapped sample save the proportion of variance explained by each factor (consider just the first five factors).  Plot the proportion of variance explained by each of the five factors  with a boxplot in the ggplot and then perform the histogram for each proportion. What can you say about these five distributions obtained? If we bootstrap the loadings we will obtain something no sense in a statistical framework. Explain why.
+ 
+Answer: The boxplot shows that there are very little outliers except for my Factor3, and the size of box (space between Q1 and Q3) is small which means that the sample factors explain pretty much the same proportion of variance in the sample data. Therefore, the factors given by the factor analysis are stable and reliable. The 5 distributions give a nearly normal distribution with their proportion of variance as mean and very small variance, which matches what we see on the boxplot. The "factanal" always use "mle" to get the potential factors, "maximum likehood estimation" uses bootstrap to estimate the statistics. Therefore, if we do bootstrapping using "factanal" in this problem, it makes no sense as "factanal" loadings is a result of bootstrapping itself.
+```{r}
+process <- function(data, idx){
+  data <- data[idx,]
+  mod <- factanal(data, factors=5, rotation="none")
+  lort <- loadings(mod)
+  return (colSums(lort^2)/nrow(lort))
+}
+sample <- boot::boot(data=df, statistic=process, R=50)
+sample
+```
+```{r}
+stat <- sample$t
+df_3 <- data.frame(Factor1=stat[,1], Factor2=stat[,2], Factor3=stat[,3], Factor4=stat[,4], Factor5=stat[,5])
+df_3_thin <- data.frame()
+for (i in 1:5){
+  df_3_thin <- rbind(data.frame(value=stat[,i], factor=paste("Factor", i)), df_3_thin)
+}
+ggplot(df_3_thin, aes(x=factor, y=value)) + geom_boxplot()
+```
+```{r}
+for (i in 1:5){
+  p <- ggplot(df_3, aes_string(x=names(df_3)[i])) + geom_histogram(bins=30)
+  plot(p)
+}
+```
+
+ 

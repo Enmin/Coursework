@@ -1,0 +1,207 @@
+---
+title: "Assignment 5"
+output: pdf_document
+latex_engine: xelatex
+header-includes:
+- \usepackage{blkarray}
+- \usepackage{amsmath}
+---
+
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+library(tidyverse)
+library(rlang)
+library(scales)
+library(readstata13)
+```
+
+
+**NAME: Your Name **  
+**DUE DATE: April 13th, 11:59pm** 
+
+```{r,include=FALSE}
+library(foreign)
+library(readstata13)
+library(tidyverse)
+library(caret)
+library(glmnet)
+library(MASS)
+library(tree)
+library (ISLR)
+library(ggparty)
+```
+
+## Problem 1 (100 pts)
+
+In the folder Assignment 3, you will find the data set called FF_wave6_2020v2.dta. This data set is from the Fragile Family Data Set, and it includes many different variables (socio-demographic, economics, and health status) of teenagers (15 years old) and their parents.
+The codebook (ff_wave6_codebook.txt) associated with the data set is on Canvas (folder Assignment 3). As done in assignment 3, Consider the variable _doctor diagnosed youth with depression/anxiety_. In the data set, the name of this variable is _p6b5_. Then consider in the data set these variables: _p6b10_, _p6b35_, _p6b55_, _p6b60_, _p6c21_, _p6f32_, _p6f35_, _p6h74_, _p6h102_, _p6i7_, _p6i8_, _p6i11_, _p6j37_, _k6b21a_, _k6b22a_, _k6c1_, _k6c4e_, _k6c28_, _k6d37_, _k6f63_, _ck6cbmi_, _k6d10_. Now, you have a data set with 4898 subjects and 23 variables. Clean the data in these three steps. 1- Each variable has a value with a number and a text (for example, a value for the variable _p6b5_ is _2 No_). Remove the text from all the variables in the data set (hint: use the function sub for each column). 2- Transform each variable in numeric (hint: use the function as.numeric for each column). 3- Transform all the values less than 0 in NA and then remove all your NA values from the data set. Now call the variables with an appropriate name (for example _p6b5_ can become _Depression_). This will be exactly the same process done in Assignment 3.
+
+
+```{r}
+data_6 <- read.dta13('/Users/stephen/Desktop/Data2020/Assignment3/FF_wave6_2020v2.dta',
+                     generate.factors = T, nonint.factors = TRUE) 
+Fragile <- data_6 %>% dplyr::select("p6b5","p6b10","p6b35","p6b55","p6b60","p6c21",
+                             "p6f32","p6f35","p6h74","p6h102","p6i7","p6i8",
+                             "p6i11","p6j37","k6b21a","k6b22a","k6c1","k6c4e",
+                             "k6c28", "k6d37","k6f63","ck6cbmi","k6d10")
+for (i in 1:ncol(Fragile)){
+   # Remove the text
+  Fragile[,i] = substr(Fragile[,i], 1,2)
+  # Transform to numeric
+  Fragile[,i] = as.numeric(Fragile[,i])
+  #Transform the values less than 0 in NA and remove all NA values.
+  Fragile[,i] = ifelse(Fragile[,i] < 0, NA, Fragile[,i])
+  Fragile = na.omit(Fragile)
+}
+# Dimension and first 6 rows
+print(dim(Fragile))
+head(Fragile,6)  
+```
+
+```{r}
+#rename variables
+frag_new <- Fragile %>% 
+  dplyr::rename(depression = p6b5, add_adhd = p6b10,
+         cruel = p6b35, tr_sleeping = p6b55,
+         run_away = p6b60, suspended = p6c21,
+         alcohol_drug = p6f32, par_time_jail = p6f35,
+         smoked = p6h74, time_jail = p6h102,
+         help_nb = p6i7, close_knit = p6i8,
+         gangs_prob = p6i11, free_food = p6j37,
+         tr_school = k6b21a, sports_team = k6b22a,
+         relate_par = k6c1, atm_cal = k6c4e,
+         clos_father = k6c28, active_60 = k6d37,
+         marijuana = k6f63,bmi = ck6cbmi, 
+         age_menstruated = k6d10)%>%
+  # Transform (1,2) to (0,1) on the response variable
+  mutate(depression = ifelse(depression == 2, 0, 1),
+         depression = as.factor(depression))
+```
+
+
+(a) (30 points) Perform the classification tree by using  _Depression_ as the outcome variable. Read the tree from plot() and reproduce it using ggparty (a function to plot the tree in ggplot), merge the useless branches at the same time (here is the tutorial: https://cran.r-project.org/web/packages/ggparty/vignettes/ggparty-graphic-partying.html).
+
+
+```{r}
+tree.frag =tree(depression~., data=frag_new)
+plot(tree.frag )
+text(tree.frag,pretty =0)
+```
+
+```{r}
+data("WeatherPlay", package = "partykit")
+sp_tr_sleep <- partysplit(4L, breaks=1.5)
+sp_tr_scl <-  partysplit(15L, breaks=1.5)
+sp_adhd <- partysplit(2L, breaks=1.5)
+sp_bmi1 <- partysplit(22L, breaks=21)
+sp_help <- partysplit(11L, breaks=3.5)
+sp_bmi2 <- partysplit(22L, breaks=19.5)
+sp_atm <- partysplit(18L, breaks=2.5)
+sp_bmi3 <- partysplit(22L, breaks=31)
+sp_act <-  partysplit(20L, breaks=4.5)
+sp_gangs <- partysplit(13L, breaks=3.5)
+
+pn <- partynode(4L, split = sp_tr_sleep, kids = list(
+  partynode(4L, info = 0),
+  partynode(15L, split = sp_tr_scl,kids = list( 
+    partynode(15L, info = 0),
+    partynode(2L,split = sp_adhd, kids = list(
+      partynode(22L,split = sp_bmi1, kids = list(
+        partynode(22L,info = 1),
+        partynode(22L,info = 0))),
+      partynode(11L,split = sp_help, kids = list(
+        partynode(22L,split = sp_bmi2, kids = list(
+          partynode(22L,info = 0),
+          partynode(18L,split = sp_atm, kids = list(
+            partynode(22L,split = sp_bmi3,kids = list(
+              partynode(22L,info = 0),
+              partynode(22L,info = 1)
+            )),
+            partynode(20L,split = sp_act,kids = list(
+              partynode(13L, split = sp_gangs, kids = list(
+                partynode(13L,info = 0),
+                partynode(13L, info = 1)
+              )),
+              partynode(20L,info = 0)
+            ))
+          ))
+        )),
+        partynode(11L, info = 0)
+      ))
+    ))
+  ))
+))
+
+
+py <- party(pn, frag_new)
+```
+
+```{r}
+ggparty(py) +
+  geom_edge() +
+  geom_edge_label() +
+  geom_node_label(aes(label = splitvar), ids = "inner") +
+  geom_node_splitvar() +
+  geom_node_label(aes(label = info), ids = "terminal")
+```
+
+
+(b) (40 points) Split the data set in half, perform the tree with the training set with half of the sample. Then, with the remaining half perform the prediction and calculate the percentage of correct predictions. Show this percentage. Now run the logistic regression with the same training sample you have. Perform the prediction for the logistic regression in the test set. What is the percentage now for the logistic regression? Considering just the prediction accuracy, will you use the classification tree or the logistic regression?
+
+```{r}
+set.seed(3)
+train = sample (1: nrow(frag_new), nrow(frag_new)/2)
+frag_train <- frag_new[train,]
+frag_test <- frag_new[-train,]
+y_test <- frag_new$depression[-train]
+tree.frag <- tree(depression~., frag_train)
+y_pred_tree <- predict(tree.frag, frag_test, type ="class")
+table(y_pred_tree, y_test)
+
+(212 + 2)/(244)
+```
+
+```{r}
+log.frag <- glm(depression ~ ., data = frag_new, family = "binomial")
+y_pred_log <- predict(log.frag,frag_test, type ="response")
+predicted.classes <- ifelse(y_pred_log > 0.5, 1, 0) #set the threshold = 0.5
+table(predicted.classes, y_test)
+
+(212+10)/(244)
+```
+
+
+Answer: The prediction accuracy on test set for the decision tree is 0.877 but the prediction accuracy for the logistic regression is 0.910. So I prefer logistic regression model which has larger prediction accuracy.
+
+(c) (30 points) Prune the tree now. First, use the cross validation to know the best size to use for your tree (you will use this number in the function prune.misclass for best option). Plot the results by obtaining a plot with missclassification errors on the y axis. What is the best size you will choose? Now use the function prune.misclass to prune your tree with the best value selected. Calculate the percentage of the correct prediction with your pruned tree. Will it increase or decrease? 
+
+
+```{r}
+set.seed (2020)
+cv.frag <- cv.tree(tree.frag, FUN = prune.misclass)
+# index of tree with minimum error
+min_idx = which.min(cv.frag$dev)
+# number of terminal nodes in that tree
+cv.frag$size[min_idx]
+
+plot(cv.frag$size, cv.frag$dev / nrow(frag_train), type = "b",
+     xlab = "Tree Size", ylab = "CV Misclassification Rate")
+```
+
+
+
+```{r}
+prune.frag <- prune.misclass(tree.frag, best=2)
+ plot(prune.frag)
+ text(prune.frag, pretty =0)
+ tree.pred= predict(prune.frag , frag_test, type="class")
+ table(tree.pred, y_test)
+
+(214+1)/224 #increase
+```
+
+Answer: Base on the plot above, the missclassification rate increases as the tree size increases. We would like to choose the tree size with the lowest misclassification rate so the best tree size is 2. (We cannot choose 1 since it makes no sense for splitting). Then the pruning tree with best size gives us the prediction accuracy 0.9598 which increases a lot compared to previous models.

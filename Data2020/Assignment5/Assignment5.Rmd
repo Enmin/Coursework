@@ -1,0 +1,168 @@
+---
+title: "Assignment 5"
+output: pdf_document
+latex_engine: xelatex
+header-includes:
+- \usepackage{blkarray}
+- \usepackage{amsmath}
+---
+
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list=ls())
+library(knitr)
+library(tidyverse)
+library(rlang)
+library(scales)
+library(readstata13)
+
+library(foreign)
+library(ggplot2)
+library(haven)
+library(MASS)
+
+library(dplyr)
+library(ISLR)
+library(glmnet)
+library(arm)
+library(coefplot)
+library(factoextra)
+library(caret)
+library(RColorBrewer)
+library(corrplot)
+library(neuralnet)
+library(tree)
+library(ggparty)
+library(rpart)
+```
+
+
+**NAME: Enmin Zhou **  
+**DUE DATE: April 13th, 11:59pm** 
+
+## Problem 1 (100 pts)
+
+In the folder Assignment 3, you will find the data set called FF_wave6_2020v2.dta. This data set is from the Fragile Family Data Set, and it includes many different variables (socio-demographic, economics, and health status) of teenagers (15 years old) and their parents.
+The codebook (ff_wave6_codebook.txt) associated with the data set is on Canvas (folder Assignment 3). As done in assignment 3, Consider the variable _doctor diagnosed youth with depression/anxiety_. In the data set, the name of this variable is _p6b5_. Then consider in the data set these variables: _p6b10_, _p6b35_, _p6b55_, _p6b60_, _p6c21_, _p6f32_, _p6f35_, _p6h74_, _p6h102_, _p6i7_, _p6i8_, _p6i11_, _p6j37_, _k6b21a_, _k6b22a_, _k6c1_, _k6c4e_, _k6c28_, _k6d37_, _k6f63_, _ck6cbmi_, _k6d10_. Now, you have a data set with 4898 subjects and 23 variables. Clean the data in these three steps. 1- Each variable has a value with a number and a text (for example, a value for the variable _p6b5_ is _2 No_). Remove the text from all the variables in the data set (hint: use the function sub for each column). 2- Transform each variable in numeric (hint: use the function as.numeric for each column). 3- Transform all the values less than 0 in NA and then remove all your NA values from the data set. Now call the variables with an appropriate name (for example _p6b5_ can become _Depression_). This will be exactly the same process done in Assignment 3.
+
+
+
+
+(a) (30 points) Perform the classification tree by using  _Depression_ as the outcome variable. Read the tree from plot() and reproduce it using ggparty (a function to plot the tree in ggplot), merge the useless branches at the same time (here is the tutorial: https://cran.r-project.org/web/packages/ggparty/vignettes/ggparty-graphic-partying.html). 
+
+```{r fig.width=12, fig.height=20}
+vars <- c('p6b5','p6b10', 'p6b35', 'p6b55', 'p6b60', 'p6c21', 'p6f32', 'p6f35', 'p6h74', 'p6h102', 'p6i7', 'p6i8',
+'p6i11', 'p6j37', 'k6b21a', 'k6b22a', 'k6c1', 'k6c4e', 'k6c28', 'k6d37', 'k6f63', 'ck6cbmi', 'k6d10')
+data = read_dta('/home/enminz/Graduate/Data-2020/Assignment5/FF_wave6_2020v2.dta', col_select = vars)
+cols = c(1:23)
+data[,cols] = apply(data[,cols], 2, function(x) (x));
+data[,cols][data[,cols]<0] <- NA
+df <- na.omit(data)
+df <- df %>% rename(Depression=p6b5, ADD=p6b10,
+                cruel=p6b35,  trouble_sleeping=p6b55,
+                run_away=p6b60, suspend=p6c21,
+                drug=p6f32, parent_jail=p6f35, smoke=p6h74, jail=p6h102, helpful_neighborhood=p6i7, close_knit_neighborhood=p6i8,
+                gangs_neighborhood=p6i11, receive_free_food=p6j37, trouch_attention=k6b21a, athletic=k6b22a, biological_parent_relationship=k6c1,
+                atmosphere_calm=k6c4e, close_with_father=k6c28, age_menstruated=k6d10, physically_active=k6d37, marijuana=k6f63,
+                BMI=ck6cbmi
+                )
+df <- df %>% mutate(Depression = ifelse(Depression == 2, 0, 1), Depression = as.factor(Depression))
+
+tree_class <- tree(Depression~., df, method="class")
+plot(tree_class)
+text(tree_class)
+```
+```{r}
+sp_sleep <- partysplit(4L, breaks=1.5)
+sp_trouch_attention <- partysplit(15L, breaks = 1.5)
+sp_ADD <- partysplit(2L, breaks=1.5)
+sp_BMI <- partysplit(23L, breaks=21.435)
+sp_helpful_neighborhood <- partysplit(11L, breaks=3.5)
+sp_BMI2 <- partysplit(23L, breaks=20.065)
+sp_atmosphere_calm <- partysplit(18L, breaks=2.5)
+sp_BMI_3 <- partysplit(23L, breaks=31.925)
+sp_physically_active <- partysplit(21L, breaks=4.5)
+sp_gangs_neighborhood <- partysplit(13L, breaks=3.5)
+pn <- partynode(4L, split = sp_sleep, kids = list(
+  partynode(4L, info="0"),
+  partynode(15L, split=sp_trouch_attention, kids=list(
+    partynode(15L, info="0"), 
+    partynode(2L, split=sp_ADD, kids=list(
+      partynode(23L, split=sp_BMI, kids=list(
+        partynode(23L, info="1"),
+        partynode(23L, info="0")
+      )),
+      partynode(11L, split=sp_helpful_neighborhood, kids=list(
+        partynode(23L, split=sp_BMI2, kids=list(
+          partynode(23L, info="0"),
+          partynode(18L, split=sp_atmosphere_calm, kids=list(
+            partynode(23L, split=sp_BMI_3, kids=list(
+              partynode(23L, info="0"),
+              partynode(23L, info="1")
+            )),
+            partynode(21L, split=sp_physically_active, kids=list(
+              partynode(13L, split=sp_gangs_neighborhood, kids=list(
+                partynode(13L, info="0"),
+                partynode(13L, info="1")
+              )),
+              partynode(21L, info="0")
+            ))
+          ))
+        )),
+        partynode(11L, info="0")
+      ))
+    ))
+  ))
+))
+py <- party(pn, df)
+ggparty(py)+geom_edge() +
+  geom_edge_label() +
+  geom_node_label(aes(label = splitvar), ids = "inner") +
+  geom_node_splitvar() +
+  geom_node_label(aes(label = info), ids = "terminal")
+```
+
+
+(b) (40 points) Split the data set in half, perform the tree with the training set with half of the sample. Then, with the remaining half perform the prediction and calculate the percentage of correct predictions. Show this percentage. Now run the logistic regression with the same training sample you have. Perform the prediction for the logistic regression in the test set. What is the percentage now for the logistic regression? Considering just the prediction accuracy, will you use the classification tree or the logistic regression?
+
+Answer: The percetage for tree model is 0.852 and for logistic model is 0.877. I will choose logistic regression, since the accuracy of the predictions on the test set is higher for logistic regression.
+```{r}
+set.seed(2)
+idx <- sample (1: nrow(df), nrow(df)/2)
+train <- df[idx,]
+test <- df[-idx,]
+tree_model <- tree(Depression~., train)
+tree_predictions <- predict(tree_model, test, type="class")
+cm<-table(tree_predictions, test$Depression)
+tree_accuracy <- (cm[1,1]+cm[2,2])/244
+
+glm_model <- glm(Depression~., train, family = "binomial")
+glm_predictions <- predict(glm_model, test)
+glm_predictions <- ifelse(glm_predictions > 0.5 , 1, 0)
+cm<-table(glm_predictions, test$Depression)
+glm_accuracy <- (cm[1,1]+cm[2,2])/244
+c(tree_accuracy, glm_accuracy)
+```
+
+
+(c) (30 points) Prune the tree now. First, use the cross validation to know the best size to use for your tree (you will use this number in the function prune.misclass for best option). Plot the results by obtaining a plot with missclassification errors on the y axis. What is the best size you will choose? Now use the function prune.misclass to prune your tree with the best value selected. Calculate the percentage of the correct prediction with your pruned tree. Will it increase or decrease? 
+
+Answer: The best size is 5 according to cross validation. The imrpoved accuracy is 0.877 after pruning the tree.
+
+```{r}
+cv <- cv.tree(tree_model ,FUN=prune.misclass)
+df_cv <- data.frame(cv$size, cv$dev)
+ggplot(data=df_cv, aes(x=cv.size, y=cv.dev)) + geom_point() + geom_line()
+plot(cv$size, cv$dev / nrow(train), type="b", xlab="Tree Size", ylab= "CV Missclassification Rate")
+```
+```{r}
+pruned_tree <- prune.misclass(tree_model, best=cv$size[which.min(cv$dev[1:length(cv$dev)-1])])
+pruned_tree_predictions <- predict(pruned_tree, test, type="class")
+cm <- table(pruned_tree_predictions, test$Depression)
+pruned_tree_accuracy <- (cm[1,1]+cm[2,2])/244 #
+pruned_tree_accuracy
+```
+

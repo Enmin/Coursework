@@ -1,0 +1,4 @@
+[deps]
+MLDatasets = "eb30cadb-4394-5ae3-aed4-317e484a6458"
+MLJ = "add582a8-e3ab-11e8-2d5e-e98b27df1bc7"
+MLJScikitLearnInterface = "5ae90465-5518-4432-b9d2-8a1def2f0cab"

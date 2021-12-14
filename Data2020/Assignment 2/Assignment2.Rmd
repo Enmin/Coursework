@@ -1,0 +1,178 @@
+---
+title: "Assignment 2"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**NAME: Enmin Zhou **  
+**DUE DATE: February 23rd, 11:59pm** 
+
+## Problem 1 (100 pts)
+```{r}
+rm(list=ls())
+library(foreign)
+library(ggplot2)
+library(boot)
+library(MASS)
+library(tidyverse)
+library(dplyr)
+library(caret)
+library(GGally)
+library(scales)
+```
+
+In the earnings dataset you can find salary (_earn_) and some socio-demographic characteristics of each subject, including variables such as _height_, _weight_, gender (_male_), _ethnicity_, _education_, mother's (_mother_education_) and father's education (_father_education_), _walk_ (e.g. walking time), _exercise_, if they smoke or not (_smokenow_), _tense_, _angry_ and _age_.
+
+The dataset can be found in Canvas in the Data folder (file name: earnings.csv):
+
+  (a) (10 points)  Subset the data and consider only the variables: _education_, _mother_education_, _father_education_, _walk_, _exercise_, _tense_, _angry_, _weight_, _height_. Check the correlation by performing a figure similar to Figure 1 below (make sure not to use the default colours but rather choose your own) and a figure with ggpairs. Take special care to the labels and legend. What can you say about the results? What would you expect from a linear regression model?
+  
+  ```{r, out.width="0.8\\linewidth", include=TRUE, fig.align="center", fig.cap=c("Correlation"), echo=FALSE}
+knitr::include_graphics("ggcor.pdf")
+```
+a: I use green for positively high correlation and yellow for negatively high correlation and white for low correlation. "Tense" and "Angry", "mother education" and "education", "fother education" and "education", "father education" and "mother educatin" have correlation 1. "weight" have very low correlation with all of them except for "Heighet".
+```{r fig.width=7, fig.height=7}
+earnings = read.csv('earnings.csv')
+attach(earnings)
+d_1 <- earnings %>% select(education, mother_education, father_education, walk, exercise, tense, angry, weight, height) %>% drop_na()
+colnames(d_1) <-c("Education","Mot._education","Fat._education","Walk","Exercise","Tense","Angry","Weight","Height")
+p1 <- ggcorr(d_1, label = TRUE, low = "yellow", mid = "white", high = "green")
+p1
+```
+
+
+```{r fig.width=7, fig.height=7}
+p1_2 <- ggpairs(d_1)
+p1_2
+```
+
+  (b)  (10 points)  Perform a linear regression model using the variable _earn_ as the dependent variable and _height_ as the independent variable. What can you say about this covariate? Is it significant? Plot the linear regression you have obtained in ggplot by using a subset of the data. This subset is obtained by restricting the variable _earn_ to be less than 2e+05 ( similar to Figure  2 below)
+  
+   ```{r, out.width="0.8\\linewidth", include=TRUE, fig.align="center", fig.cap=c("Linear Regression"), echo=FALSE}
+knitr::include_graphics("fig2.pdf")
+```
+b: The slope is 1595 and p-value is smaller than 2.2e-16 which means height is correlated to earn but the slope is not large as seen in graph. From the graph, we can also see that in each height rane, the earnings distributed widely over 0 - 200000.
+```{r}
+attach(earnings)
+model_2 <- lm(earn~height)
+summary(model_2)
+df_2 <- earnings %>% filter(earn < 2*10^5)
+p2 <- ggplot(data = df_2, aes(x = height, y = earn)) + geom_point(alpha = 0.5)
+p2 <- p2 + geom_smooth(method = "lm", se = FALSE, color='black') 
+p2 <- p2 + theme_bw() +
+  scale_x_continuous(name="Height") +
+  scale_y_continuous(name="Earnings") + ggtitle("Fitted linear model")
+p2
+```
+  
+  (c) (20 points) Draw the qqplot by using the library ggplot for the model obtained in point b. Then perform the qqplot (using the library ggplot) for the two different groups of sex (similar to Figure 3 below). Take special care to the legend and the label. What can you say about this plot?
+ 
+  ```{r, out.width="0.8\\linewidth", include=TRUE, fig.align="center", fig.cap=c("QQplot for different groups"), echo=FALSE}
+knitr::include_graphics("fig3.pdf")
+```
+c: We cann see that generally, male earns more than females. But both of the genders does not follow the normal distribution since the red line and the blue line are below the diagnoal line, which menas that the sample distribution does not match the theoretical normal distribution.
+```{r, fig.width=7, fig.height=7}
+p3 <- qplot(sample = earn, shape=as.factor(earnings$male), color=as.factor(earnings$male))
+p3 <- p3 + theme_classic() + 
+  scale_x_continuous(name = "Theoretical") +
+  scale_y_continuous(name = "Sample",limits=c(0, 4e+05),breaks = c(0,1e+05,2e+05,3e+05,4e+05),
+                     labels = function(x) format(x, scientific = TRUE)) +
+  scale_colour_discrete(name = 'Gender',
+                      breaks=c("0", "1"),
+                      labels=c("Female", "Male")) +
+  scale_shape_discrete(name = 'Gender',
+                       breaks=c("0", "1"),
+                       labels=c("Female", "Male")) + 
+  ggtitle("Earnings for different groups")
+p3
+```
+  
+  (d)  (20 points)  Perform in R the backward and forward procedure to select the covariates, remember to remove the rows with missing values. Did you obtain the same or different results from the two different procedures, please explain. Which procedure would you prefer? Comment what you discovered and the theoretical implications. Just for the backward solution compute the RSS and show the trend of RSS for beta1 in a plot by using ggplot in R (similar to Figure 4). (Hint: For RSS plot, set the range of x-axis  to be [0,1000]).
+  
+   ```{r, out.width="0.8\\linewidth", include=TRUE, fig.align="center", fig.cap=c("RSS for the backward procedure"), echo=FALSE}
+knitr::include_graphics("fig4.pdf")
+```
+d: I prefered forward selection because both have 28699.37, but the forward selection reaches the best combination with fewer steps.
+```{r fig.width=5, fig.height=4}
+d_4 <- na.omit(earnings) # remove missing values
+fit_for1 <- lm(earn~., data=d_4)
+fit_for2 <- lm(earn ~ 1, data=d_4)
+print("FORWARD SELECTION")
+model_forward <- stepAIC(fit_for2,direction="forward",scope=list(upper=fit_for1,lower=fit_for2))
+summary(model_forward)
+
+print("BACKWARD SELECTION")
+## backward selection
+fit_bac <- lm(earn~., data = d_4)
+model_back <- step(fit_bac, direction= 'backward')
+summary(model_back)
+
+
+beta1 <- seq(0, 1000, 1)
+
+rss <- function(beta, beta1, data){
+  res <- d_4$earn - (beta[1]+beta1*d_4$height+beta[3]*d_4$male+beta[4]*d_4$education+beta[5]*d_4$tense +beta[6]*d_4$age)
+  return(sum(res^2))
+}
+
+results <- data.frame(beta1 = beta1,
+                      rss = sapply(beta1, rss, beta = as.numeric(model_back$coefficients)))
+results %>% ggplot(aes(beta1, rss)) + geom_line() + 
+  geom_line(aes(beta1, rss))
+```
+
+  (e) (20 points) Perform a bootstrap of 500 samples for beta 1 (_height_), beta 2 (_male_), and beta 3 (_education_) for the coefficient obtained in the backward procedure in point d. Plot the beta coefficients that you have obtained with histograms with ggplot (similar to Figure 5). Remember to use the data without missing values.
+
+```{r, out.width="1.12\\linewidth", include=TRUE, fig.align="center", fig.cap=c("Bootstrap Results"), echo=FALSE}
+knitr::include_graphics("bootstrap.pdf")
+```
+```{r}
+n <- 500
+d_5 <- na.omit(earnings)
+samples <- 500
+coef_boot <- matrix(NA, n, 3)
+for (i in 1:n){	
+  s_boot <- sample(c(1:dim(d_5)[1]), samples, replace=FALSE)
+  data_boot <- d_5[s_boot,]
+  fit3 <- lm(earn/1000 ~ height + male + education + tense + age, data = data_boot)
+  coef_boot[i,] <- fit3$coefficients[2:4]
+}
+d_5 <- data.frame(value = c(coef_boot[,1], coef_boot[,2], coef_boot[,3]), 
+                        beta = rep(c("beta_1","beta_2","beta_3"), each = n))
+df_model_backward <- data.frame(beta = c("beta_1","beta_2","beta_3"),value = as.numeric(model_back$coefficients[2:4])/1000)
+p5 <- ggplot(d_5, aes(x = value)) + geom_histogram(binwidth = 0.5,color="black", fill="grey") + 
+  facet_wrap(.~beta, ncol = 3) + geom_vline(data=df_model_backward, aes(xintercept=value, color="red"), linetype="dashed")
+p5 <- p5 + scale_x_continuous(limits = c(0, 18)) + theme(legend.position="none")
+p5
+```
+
+  (f) (20 points) Compute the LOO and K-fold cross validation and write the results. Compute the mean square error for both the LOO and the K-fold cross validation. Then plot the prediction against the true value for LOO, using ggplot. Describe the results. Remember to use the data without missing values.
+
+f: mse for LOOCV is 453234294 while mse for K-fold CV is 425241313. Both are big since earnings have very big magnitude and the lm fitted model does not fit every point closely so that the MSE is big. After ploting the prediction, I find that the predictions are influenced some big outliers (large figures in earn). Only capturing the linear relationship does not fully capture the relationship between earn and other 5 features.
+```{r}
+train.control_loocv <- trainControl(method = "LOOCV")
+# Train the model
+d_6 <- na.omit(earnings)
+model_loocv <- train(earn~height + male + education + tense + age, data = d_6, method = "lm", trControl = train.control_loocv)
+# Summarize the results
+print("LOOCV")
+print(model_loocv)
+
+train.control_kcv <- trainControl(method = "cv", number = 10)
+# Train the model
+model_kcv <- train(earn~ height + male + education + tense + age, data = d_6, method = "lm", trControl = train.control_kcv)
+# Summarize the results
+print("K-fold CV")
+print(model_kcv)
+```
+
+
+```{r}
+predictions <- predict(model_loocv, newdata = d_6)
+res6 <- data.frame(Estimated=d_6$earn, True_value=predictions)
+ggplot(aes(x=Estimated, y=True_value), data=res6) + geom_point() + labs(x="True Value", y="Predict Value", Title="Results") + theme_bw()
+```
+

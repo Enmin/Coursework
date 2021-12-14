@@ -1,0 +1,212 @@
+---
+title: "Assignment 5"
+output: pdf_document
+latex_engine: xelatex
+header-includes:
+- \usepackage{blkarray}
+- \usepackage{amsmath}
+---
+
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+library(tidyverse)
+library(rlang)
+library(scales)
+library(readstata13)
+```
+
+
+**NAME: Your Name **  
+**DUE DATE: April 13th, 11:59pm** 
+
+## Problem 1 (100 pts)
+
+In the folder Assignment 3, you will find the data set called FF_wave6_2020v2.dta. This data set is from the Fragile Family Data Set, and it includes many different variables (socio-demographic, economics, and health status) of teenagers (15 years old) and their parents.
+
+The codebook (ff_wave6_codebook.txt) associated with the data set is on Canvas (folder Assignment 3). As done in assignment 3, Consider the variable _doctor diagnosed youth with depression/anxiety_. In the data set, the name of this variable is _p6b5_. Then consider in the data set these variables: _p6b10_, _p6b35_, _p6b55_, _p6b60_, _p6c21_, _p6f32_, _p6f35_, _p6h74_, _p6h102_, _p6i7_, _p6i8_, _p6i11_, _p6j37_, _k6b21a_, _k6b22a_, _k6c1_, _k6c4e_, _k6c28_, _k6d37_, _k6f63_, _ck6cbmi_, _k6d10_. Now, you have a data set with 4898 subjects and 23 variables. Clean the data in these three steps. 1- Each variable has a value with a number and a text (for example, a value for the variable _p6b5_ is _2 No_). Remove the text from all the variables in the data set (hint: use the function sub for each column). 2- Transform each variable in numeric (hint: use the function as.numeric for each column). 3- Transform all the values less than 0 in NA and then remove all your NA values from the data set. Now call the variables with an appropriate name (for example _p6b5_ can become _Depression_). This will be exactly the same process done in Assignment 3.
+
+**Load the Library**
+```{r}
+library(haven)
+library(dplyr)
+library(readstata13)
+library(arm)
+library(ggplot2)
+library(MASS)
+library(boot)
+library(tidyr)
+library(glmnet)
+library(tree)
+library (ISLR)
+library(ggparty)
+```
+
+```{r warning=FALSE}
+df_wave6 <- read.dta13("D:/Brown_Courses/2020/HW3/FF_wave6_2020v2.dta")
+dim(df_wave6)
+```
+**Select Variables**
+```{r}
+myvars = c("p6b5","p6b10", "p6b35", "p6b55", "p6b60", "p6c21", "p6f32", "p6f35", "p6h74", "p6h102", "p6i7", "p6i8", "p6i11", "p6j37", "k6b21a", "k6b22a", "k6c1", "k6c4e", "k6c28", "k6d37", "k6f63", "ck6cbmi", "k6d10")
+df = df_wave6[myvars]
+dim(df)
+```
+**Clean the Data**
+```{r}
+df <- as.data.frame(lapply(df, function(x) as.numeric(gsub("([0-9]+).*$", "\\1", x))))
+df <- as.data.frame(lapply(df, function(x) {ifelse(x < 0, NA, x)}))
+df_cleaned <-na.omit(df)
+dim(df_cleaned)
+```
+
+```{r}
+str(df_cleaned)
+```
+
+(a) (30 points) Perform the classification tree by using  _Depression_ as the outcome variable. Read the tree from plot() and reproduce it using ggparty (a function to plot the tree in ggplot), merge the useless branches at the same time (here is the tutorial: https://cran.r-project.org/web/packages/ggparty/vignettes/ggparty-graphic-partying.html). 
+
+```{r}
+df_rename <- df_cleaned %>% dplyr::rename(Depression = "p6b5", Youth_ADD_ADHD = "p6b10", Youth_Cruel = "p6b35", Youth_Trouble_Sleeping = "p6b55", Youth_Runaway = "p6b60", Youth_Suspended = "p6c21", Nonresident_Alcohol_Drug = "p6f32", Nonresident_Jail = "p6f35", Nonresident_Smoke = "p6h74", Jail = "p6h102", Helping = "p6i7", Close_Knit = "p6i8", 
+Gangs_Problem = "p6i11", Received_Free_Food = "p6j37", Trouble_Paying_Attention = "k6b21a", Athletic = "k6b22a", Biological_Parents = "k6c1", Calm_Atom = "k6c4e", 
+Closeness_Father = "k6c28", Physically_Active_60 = "k6d37", 
+Marijuana = "k6f63", BMI = "ck6cbmi", First_Menstruated_Age = "k6d10")
+df_rename$Depression[df_rename$Depression == 2] <- 0
+df_rename$Depression = as.factor(df_rename$Depression)
+
+```
+
+```{r}
+str(df_rename)
+```
+```{r}
+for(i in 1:23){
+  print(i)
+  print(colnames(df_rename)[i])
+}
+```
+
+
+
+```{r}
+sp_troublesleeping <- partysplit(4L, breaks = 1.5)
+sp_troubleattention <- partysplit(15L, breaks = 1.5)
+sp_add_adhdR <- partysplit(2L, breaks = 1.5)
+sp_BMIR <- partysplit(22L, breaks = 21)
+sp_helpingR <- partysplit(11L, breaks = 3.5)
+sp_BMIR2 <- partysplit(22L, breaks = 19.5)
+sp_calmR <- partysplit(18L, breaks = 2.5)
+sp_BMIR3 <- partysplit(22L, breaks = 31)
+sp_physicalactiveR <- partysplit(20L, breaks = 4.5)
+sp_gangsproblem <- partysplit(13L, breaks = 3.5)
+```
+
+```{r}
+pn <- partynode(4L, split = sp_troublesleeping, kids = list(
+  partynode(4L, info = 0),
+  partynode(15L, split = sp_troubleattention, kids = list(
+    partynode(15L, info = 0),
+    partynode(2L, split = sp_add_adhdR, kids = list(
+      partynode(22L, split = sp_BMIR, kids = list(
+        partynode(22L, info = 1),
+        partynode(22L, info = 0)
+      )),
+      partynode(11L, split = sp_helpingR, kids = list(
+        partynode(22L, split = sp_BMIR2, kids = list(
+          partynode(22L, info = 0),
+          partynode(18L, split = sp_calmR, kids = list(
+            partynode(22L, split = sp_BMIR3, kids = list(partynode(22L, info = 0),partynode(22L, info = 1))),
+            partynode(20L, split = sp_physicalactiveR, kids = list(
+              partynode(13L, split = sp_gangsproblem, kids = list(partynode(13L, info = 0), partynode(13L, info = 1))),
+              partynode(13L, info = 0)
+            ))
+          ))
+        ))
+      ,partynode(11L, info = 0)))
+    ))
+  ))
+) )
+```
+
+```{r}
+py <- party(pn, df_rename)
+ggparty(py) +
+  geom_edge() +
+  geom_edge_label() +
+  geom_node_label(aes(label = splitvar), ids = "inner") +
+  geom_node_splitvar() +
+  geom_node_label(aes(label = info), ids = "terminal")
+```
+
+(b) (40 points) Split the data set in half, perform the tree with the training set with half of the sample. Then, with the remaining half perform the prediction and calculate the percentage of correct predictions. Show this percentage. Now run the logistic regression with the same training sample you have. Perform the prediction for the logistic regression in the test set. What is the percentage now for the logistic regression? Considering just the prediction accuracy, will you use the classification tree or the logistic regression?
+
+```{r}
+set.seed(42)
+n <- nrow(df_rename)
+train_idx <- sample(1:n, n/2)
+
+df_train <- df_rename[train_idx, ]
+df_test <- df_rename[-train_idx, ]
+y_test <- df_rename$Depression[-train_idx]
+tree_2 <- tree(Depression ~ ., df_train)
+y_pred <- predict(tree_2, df_test, type = "class")
+table(y_pred, y_test)
+```
+```{r}
+correct_pred_tree <- (208+10)/(208+12+14+10)
+correct_pred_tree
+```
+```{r}
+mod_log <- glm(Depression~., data = df_train, family = "binomial")
+y_pred <- predict(mod_log, df_test, type = "response")
+predicted_prob <- ifelse(y_pred > 0.5, 1, 0)
+table(predicted_prob, y_test)
+```
+```{r}
+correct_pred_lr <- (213+9)/(213+13+9+9)
+correct_pred_lr
+```
+$Ans:$
+For the tree algorithm, the percentage is around 0.8934 and for the logistical regression, the percentage is around 0.9098. So I will use logistical regression since it has higher accuracy. 
+
+
+(c) (30 points) Prune the tree now. First, use the cross validation to know the best size to use for your tree (you will use this number in the function prune.misclass for best option). Plot the results by obtaining a plot with missclassification errors on the y axis. What is the best size you will choose? Now use the function prune.misclass to prune your tree with the best value selected. Calculate the percentage of the correct prediction with your pruned tree. Will it increase or decrease?
+```{r}
+set.seed(42)
+cv.pool <- cv.tree(tree_2 ,FUN=prune.misclass)
+cv.pool
+```
+```{r}
+# index of tree with minimum error
+min_idx = which.min(cv.pool$dev)
+min_idx
+```
+```{r}
+# misclassification rate of each tree
+mis_rate <- cv.pool$dev/length(train_idx)
+mis_rate
+```
+
+```{r}
+plot(cv.pool$size, mis_rate, type = "b", xlab = "Tree Size", ylab = "CV Misclassification Rate")
+```
+
+
+```{r}
+prune.pool <- prune.misclass(tree_2, best = 2)
+  plot(prune.pool)
+ text(prune.pool,pretty =0)
+ y_pred=predict(prune.pool, df_test, type="class")
+table(y_pred, y_test)
+```
+
+```{r}
+#n = 2
+(209+1)/(209+1+24+10)
+```
+$Ans:$
+The best size I will choose here is 2. From the graph we can see that, the lowest CV missclassification rate is at tree_size = 1. However, we can not choose 1. So we should choose the 2nd lowest CV missclassification rate where tree_size is equal to 2. 
+After that, we can see the percentage of the correct prediction with our pruned tree is decreasing a little bit. 

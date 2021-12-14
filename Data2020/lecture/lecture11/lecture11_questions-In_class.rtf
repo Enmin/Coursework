@@ -1,0 +1,52 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2513
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fnil\fcharset0 Monaco;\f1\fnil\fcharset0 Menlo-Regular;}
+{\colortbl;\red255\green255\blue255;\red62\green62\blue62;\red6\green0\blue135;\red0\green0\blue0;
+}
+{\*\expandedcolortbl;;\cssrgb\c31200\c30900\c30900;\cssrgb\c2500\c8500\c60000;\cssrgb\c0\c0\c0;
+}
+\margl1440\margr1440\vieww10800\viewh8400\viewkind0
+\pard\tx528\tx1056\tx1584\tx2112\tx2640\tx3168\tx3696\tx4224\tx4752\tx5280\tx5808\tx6337\tx6865\tx7393\tx7921\tx8449\tx8977\tx9505\tx10033\tx10561\tx11089\tx11617\tx12145\tx12674\tx13202\tx13730\tx14258\tx14786\tx15314\tx15842\tx16370\tx16898\tx17426\tx17954\tx18483\tx19011\tx19539\tx20067\tx20595\tx21123\tx21651\tx22179\tx22707\tx23235\tx23763\tx24291\tx24820\tx25348\tx25876\tx26404\tx26932\tx27460\tx27988\tx28516\tx29044\tx29572\tx30100\tx30628\tx31157\tx31685\tx32213\tx32741\tx33269\tx33797\li80\fi-80\pardirnatural\partightenfactor0
+
+\f0\fs22 \cf2 ##Q1: divide in group\
+##Perform a standard linear regression\
+##What are the coefficients you did not expect \
+##to be shrinked by the ridge regression\
+Fit1 <- lm(y~x)\
+summary(Fit1)\
+\pard\tx528\tx1056\tx1584\tx2112\tx2640\tx3168\tx3696\tx4224\tx4752\tx5280\tx5808\tx6337\tx6865\tx7393\tx7921\tx8449\tx8977\tx9505\tx10033\tx10561\tx11089\tx11617\tx12145\tx12674\tx13202\tx13730\tx14258\tx14786\tx15314\tx15842\tx16370\tx16898\tx17426\tx17954\tx18483\tx19011\tx19539\tx20067\tx20595\tx21123\tx21651\tx22179\tx22707\tx23235\tx23763\tx24291\tx24820\tx25348\tx25876\tx26404\tx26932\tx27460\tx27988\tx28516\tx29044\tx29572\tx30100\tx30628\tx31157\tx31685\tx32213\tx32741\tx33269\tx33797\li80\fi-80\pardirnatural\partightenfactor0
+\cf3 #the coef I would not expect are\
+\
+\
+\
+\
+\pard\tx528\tx1056\tx1584\tx2112\tx2640\tx3168\tx3696\tx4224\tx4752\tx5280\tx5808\tx6337\tx6865\tx7393\tx7921\tx8449\tx8977\tx9505\tx10033\tx10561\tx11089\tx11617\tx12145\tx12674\tx13202\tx13730\tx14258\tx14786\tx15314\tx15842\tx16370\tx16898\tx17426\tx17954\tx18483\tx19011\tx19539\tx20067\tx20595\tx21123\tx21651\tx22179\tx22707\tx23235\tx23763\tx24291\tx24820\tx25348\tx25876\tx26404\tx26932\tx27460\tx27988\tx28516\tx29044\tx29572\tx30100\tx30628\tx31157\tx31685\tx32213\tx32741\tx33269\tx33797\li80\fi-80\pardirnatural\partightenfactor0
+\cf2 ##divide in group\
+##Q2 In group: Display the output of ridge and lasso. what are the 3 coefficients with great difference between the two methods?\
+Runs\
+Years\
+NewLeagueN\
+\
+\
+library(ggplot2)\
+library(reshape)\
+\pard\pardeftab720\sl320\partightenfactor0
+
+\f1\fs26 \cf4 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec4 tmp <- as.data.frame(as.matrix(beta))\
+tmp$coef <- colnames(Hitters)\
+\pard\pardeftab720\sl320\partightenfactor0
+\cf4 \outl0\strokewidth0 tmp <- reshape::melt(tmp, id = "coef")\
+\pard\pardeftab720\sl320\partightenfactor0
+\cf4 \outl0\strokewidth0 tmp$variable <- as.numeric(gsub("s", "", tmp$variable))\
+tmp$lambda <- lasso.mod$lambda[tmp$variable+1] # extract the lambda values\
+tmp$norm <- apply(abs(beta[-1,]), 2, sum)[tmp$variable+1] \
+ggplot(tmp[tmp$coef != "(Intercept)",], aes(x=lambda, y=value, color = coef)) + \
+   geom_line() + \
+   scale_x_log10() + \
+   xlab("Lambda (log scale)") + \
+   guides(color = guide_legend(title = ""), \
+          linetype = guide_legend(title = "")) +\
+   theme_bw() + \
+   theme(legend.key.width = unit(3,"lines"))\
+\
+}

@@ -1,0 +1,46 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2513
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fnil\fcharset0 Monaco;}
+{\colortbl;\red255\green255\blue255;\red62\green62\blue62;\red0\green0\blue0;\red6\green0\blue135;
+\red158\green0\blue3;\red181\green118\blue12;\red11\green66\blue19;}
+{\*\expandedcolortbl;;\cssrgb\c31200\c30900\c30900;\cspthree\c0\c0\c0;\cssrgb\c2500\c8500\c60000;
+\cssrgb\c69000\c7500\c0;\cssrgb\c76500\c53500\c3500;\cssrgb\c2000\c32000\c9500;}
+\margl1440\margr1440\vieww10800\viewh8400\viewkind0
+\pard\tx528\tx1056\tx1584\tx2112\tx2640\tx3168\tx3696\tx4224\tx4752\tx5280\tx5808\tx6337\tx6865\tx7393\tx7921\tx8449\tx8977\tx9505\tx10033\tx10561\tx11089\tx11617\tx12145\tx12674\tx13202\tx13730\tx14258\tx14786\tx15314\tx15842\tx16370\tx16898\tx17426\tx17954\tx18483\tx19011\tx19539\tx20067\tx20595\tx21123\tx21651\tx22179\tx22707\tx23235\tx23763\tx24291\tx24820\tx25348\tx25876\tx26404\tx26932\tx27460\tx27988\tx28516\tx29044\tx29572\tx30100\tx30628\tx31157\tx31685\tx32213\tx32741\tx33269\tx33797\li80\fi-80\pardirnatural\partightenfactor0
+
+\f0\fs22 \cf2 ##Divide in Group: Open the data Boston Housing Perform the PCA for Boston Housing.\
+##Q4: How many components will you retain?\
+\
+\
+\pard\tx528\tx1056\tx1584\tx2112\tx2640\tx3168\tx3696\tx4224\tx4752\tx5280\tx5808\tx6337\tx6865\tx7393\tx7921\tx8449\tx8977\tx9505\tx10033\tx10561\tx11089\tx11617\tx12145\tx12674\tx13202\tx13730\tx14258\tx14786\tx15314\tx15842\tx16370\tx16898\tx17426\tx17954\tx18483\tx19011\tx19539\tx20067\tx20595\tx21123\tx21651\tx22179\tx22707\tx23235\tx23763\tx24291\tx24820\tx25348\tx25876\tx26404\tx26932\tx27460\tx27988\tx28516\tx29044\tx29572\tx30100\tx30628\tx31157\tx31685\tx32213\tx32741\tx33269\tx33797\li80\fi-80\pardirnatural\partightenfactor0
+\cf3 boston_housing\cf4  = read.csv(\cf5 '/Users/roberta/Desktop/lecture12/boston.csv'\cf4 , \cf3 header\cf4 =\cf6 T\cf4 , \cf3 sep\cf4 =\cf5 ','\cf4 )\
+dim(\cf3 boston_housing\cf4 )\
+colnames(\cf3 boston_housing\cf4 )\
+\cf3 boston_housing1\cf4  = \cf3 boston_housing\cf4 [,\cf7 -4\cf4 ]\
+colnames(\cf3 boston_housing1\cf4 ) = c(\cf5 'crime'\cf4 , \cf5 'large-lots'\cf4 , \cf5 'nonretail'\cf4 , \cf5 'nitric-oxides'\cf4 , \cf5 'room'\cf4 , \cf5 'prior1940'\cf4 ,\cf5 'dist-Boston'\cf4 , \cf5 'highway'\cf4 , \cf5 'tax-rate'\cf4 , \cf5 'pupil/teacher'\cf4 , \cf5 'af-american'\cf4 , \cf5 'lower-status'\cf4 , \cf5 'owner'\cf4 )\
+\
+\cf3 Boston_s \cf4 <- scale(\cf3 boston_housing1\cf4 )\
+\cf3 bostonPCA\cf4  <- prcomp(\cf3 Boston_s\cf4 )\
+screeplot(\cf3 bostonPCA\cf4 ) \
+eigs_B <- \cf3 bostonPCA\cf4 $sdev^2\
+eigs_B[1] / sum(eigs_B)\
+eigs_B[2] / sum(eigs_B)\
+eigs_B[3] / sum(eigs_B)\
+eigs_B[4] / sum(eigs_B)\
+\
+\pard\tx528\tx1056\tx1584\tx2112\tx2640\tx3168\tx3696\tx4224\tx4752\tx5280\tx5808\tx6337\tx6865\tx7393\tx7921\tx8449\tx8977\tx9505\tx10033\tx10561\tx11089\tx11617\tx12145\tx12674\tx13202\tx13730\tx14258\tx14786\tx15314\tx15842\tx16370\tx16898\tx17426\tx17954\tx18483\tx19011\tx19539\tx20067\tx20595\tx21123\tx21651\tx22179\tx22707\tx23235\tx23763\tx24291\tx24820\tx25348\tx25876\tx26404\tx26932\tx27460\tx27988\tx28516\tx29044\tx29572\tx30100\tx30628\tx31157\tx31685\tx32213\tx32741\tx33269\tx33797\li80\fi-80\pardirnatural\partightenfactor0
+\cf2 ##divide in group\
+##can you think about a way to plot all the important components together\
+\pard\tx528\tx1056\tx1584\tx2112\tx2640\tx3168\tx3696\tx4224\tx4752\tx5280\tx5808\tx6337\tx6865\tx7393\tx7921\tx8449\tx8977\tx9505\tx10033\tx10561\tx11089\tx11617\tx12145\tx12674\tx13202\tx13730\tx14258\tx14786\tx15314\tx15842\tx16370\tx16898\tx17426\tx17954\tx18483\tx19011\tx19539\tx20067\tx20595\tx21123\tx21651\tx22179\tx22707\tx23235\tx23763\tx24291\tx24820\tx25348\tx25876\tx26404\tx26932\tx27460\tx27988\tx28516\tx29044\tx29572\tx30100\tx30628\tx31157\tx31685\tx32213\tx32741\tx33269\tx33797\li80\fi-80\pardirnatural\partightenfactor0
+\cf4 library(\cf3 ggplot2\cf4 )\
+\cf3 heatmap\cf4  <- ggplot(\cf3 data_plot\cf4 , aes(\cf3 Col\cf4 , \cf3 Row\cf4 )) + geom_tile(aes(\cf3 fill\cf4 =\cf3 Y\cf4 ))\
+\cf3 heatmap\cf4  <- \cf3 heatmap\cf4  + scale_fill_gradient(\cf3 low\cf4 =\cf5 "white"\cf4 , \cf3 high\cf4 =\cf5 "blue"\cf4 )\
+\cf3 heatmap\cf4  <- \cf3 heatmap\cf4  + scale_y_discrete(\cf5 ''\cf4 ,\cf3 limits\cf4 =\cf3 label\cf4 [\cf3 p\cf4 :\cf7 1\cf4 ]) + theme_bw()\
+\cf3 heatmap\
+\
+##divide in group\
+##Try to change the color and to write the x axis\
+heatmap2 <- ggplot(data_plot, aes(Col, Row)) + geom_tile(aes(fill=Y))\
+heatmap2 <- heatmap2 + scale_fill_gradient(low="white", high="red")\
+heatmap2 <- heatmap2 + scale_y_discrete('',limits=label[p:1]) + theme_bw()\
+heatmap2 <- heatmap2 + scale_x_discrete('PC')\
+}

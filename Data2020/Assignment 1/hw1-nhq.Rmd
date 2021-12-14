@@ -1,0 +1,164 @@
+
+## Load Data
+```{r}
+rm(list=ls())
+
+library(ggplot2)
+library(foreign)
+library(dplyr)
+load(file = "country.rda")
+```
+
+## Problem 1
+### Solution:
+#### THe continent has the largest median population size in 1960 is Europe, which has the median at 7065525.
+#### The middle lines on the boxplot represent the median pupulation size for each continents. The median of Oceania is the lowest, but the other three medians are very close. The reason might be that there are few countries in Oceania than the other three, so that the median is downward biased.
+```{r}
+df_1960 <- gapminder %>% filter(year == 1960)
+
+p <- ggplot(data=df_1960, aes(x=continent, y=population/10^6)) +
+  geom_boxplot() +
+  scale_y_continuous(name="Population in millions", trans = 'log', breaks = c(1, 10, 100, 1000))
+p
+```
+```{r}
+check <- aggregate(x = df_1960$population,
+               by = list(df_1960$continent),
+               FUN = median)
+check[which.max(check$x),]
+```
+
+## Problem 2
+### Solution:
+#### The continent that has the largest median population in 2010 is Africa.
+#### There is little change compared with the previous question.
+```{r}
+df_2010 <- gapminder %>% filter(year == "2010")
+p <- ggplot(data = df_2010, aes(x=continent, y=population/10^6)) +
+  geom_boxplot() +
+  scale_y_continuous(name="Population in millions", trans = 'log', breaks = c(1, 10, 100, 1000))
+p
+```
+```{r}
+check <- aggregate(x = df_2010$population,
+               by = list(df_2010$continent),
+               FUN = median)
+check[which.max(check$x),]
+```
+
+## Problem 3 
+### Solution:
+#### The nearest million is 6 million.
+#### 0.7566 of countries in Europe have populations below 14 million.
+```{r}
+df_africa <- gapminder %>% filter(continent == "Africa")
+round(median(df_africa$population, na.rm = TRUE), -6)
+
+df_Euro = gapminder %>% filter(continent == "Europe")
+df_less14 <- df_Euro[df_Euro$population < 14000000, ]$country
+prop <- length(df_less14)/nrow(df_Euro)
+prop
+```
+
+## Problem 4
+### Solution:
+#### The boxplot indicates that the 'Americas' has the largest interquartile range.
+#### The size of the boxes in the boxplot represents the interquartile for each continent. 
+#### 'Americas' has the biggest box, which indicates the largest IQR after log transformation.
+
+```{r}
+p <- ggplot(data = gapminder, aes(x=continent, y=log(population))) +
+  geom_boxplot() 
+p
+```
+```{r}
+check <- aggregate(x = log(gapminder$population),
+                   by = list(gapminder$continent),
+                   FUN = IQR, na.rm = TRUE)
+check[which.max(check$x),]
+```
+
+## Problem 5
+### Solution:
+
+```{r}
+df_pop <- gapminder[gapminder$year %in% c(1960,2010),]
+p <-ggplot(df_pop, aes(x=continent, y=population/10^6, fill=as.factor(year))) +
+  geom_boxplot()+
+  theme_bw() +
+  scale_y_continuous(name="Population in millions", trans = "log", breaks = c(1, 10, 100, 1000)) +
+  theme(legend.title = element_blank())
+p
+```
+
+## Problem 6
+### Solution:
+
+```{r}
+df_infant <- gapminder[gapminder$year %in% c(1960,2010),]
+p <-ggplot(df_infant, aes(x=continent, y=infant_mortality, fill=as.factor(year))) +
+  geom_boxplot() +
+  scale_y_continuous(name="Infant Mortality", trans = 'log', breaks = c(1, 10, 100, 1000)) +
+  theme_bw() +
+  theme(legend.title = element_blank())
+p
+```
+
+## Problem 7
+### Solution: 
+#### I'm assuming the infant mortality is normal distributed, because either extremely low mortality and high mortality are rare, and most mortality rate is concerntrated in between.
+#### 0.1256 of the infant mortality is between 100 and 150, and the approximation proportion is 0.1509.
+#### 0.0390 of the infant mortality isgreater than 150, and the approximation proportion is 0.0236.
+```{r}
+df_7_1 <-  gapminder %>% filter(infant_mortality > 100 & infant_mortality<150)
+prop_1 <- nrow(df_7_1) / nrow(gapminder) 
+prop_1
+
+mean = mean(gapminder$infant_mortality, na.rm = TRUE)
+std = sd(gapminder$infant_mortality, na.rm = TRUE)
+pnorm(150, mean, std) - pnorm(100, mean, std)
+
+df_7_2 <-  gapminder %>% filter(infant_mortality > 150)
+prop_2 <- nrow(df_7_2) / nrow(gapminder) 
+prop_2
+
+1- pnorm(150, mean, std)
+```
+
+## Problem 8
+### Solution:
+#### Both of them are not normal distributions.
+```{r}
+p <- ggplot(df_infant, aes(infant_mortality, fill = as.factor(year), colour = as.factor(year))) +
+  geom_histogram(alpha = 0.3) +
+  geom_freqpoly(size=1) +
+  theme_bw() +
+  theme(legend.title = element_blank())
+p
+```
+
+
+## Problem 9
+### Solution:
+#### If sample_quantiles could fit theoretical_quantiles, it means the sample strictly follows the assmuming model.
+#### In this plot, the points are around the fitted line, which means the sample is very closed to the normal distribution.
+
+```{r}
+x <- df_infant$infant_mortality
+qqnorm(x, pch =1, frame = FALSE)
+qqline(x, col = "blue", lwd = 2)
+```
+
+
+## Problem 10
+### Solution:
+
+```{r}
+p <- ggplot(data=df_infant, aes(x=region, y=infant_mortality, fill=as.factor(year))) +
+  geom_bar(stat="identity", position=position_dodge()) + 
+  coord_flip() +
+  theme_bw() +
+  labs(y = "Infant Mortality", x = "Region") + 
+  theme(legend.title = element_blank())
+p
+```
