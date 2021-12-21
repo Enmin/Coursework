@@ -1,0 +1,19 @@
+Related work:
+For pose estimation, we refer to the model from mediapipe. Mediapipe is a general pipeline for real-time computer vision tasks including hand trakcing.
+The mediapipe hand tracking system is a combination of Single-Shot-Detector, several CNN layers that only perform feature extraction on the detected region cropped
+from the original image and 
+a dense network for prediction 2.5D coordinates of 21 hand landmarks. The output from mediapipe, if a hand is presented, will be a sequence of 63 float numbers
+representing 21 x-y-z coordinates, which then are further trained through a one-vs-one multi-class support vector machine with linear kernel. Then estimation of
+hand pose is stable in realtime as it incorporates a kinetic hand model. Also the hand presence detector only works when the confidence fails in previous frame so that
+lots of computaion is saved during real-time prediction.
+
+Techical discussion:
+The mediapipe hand tracking model has a high accuracy in real-time situation since it utilizes output from previous frames for robustness and efficiency. However, when the
+scene is not bright enought, the detection of hand presence may fail. An advantage of this deep model is that it incorporates a kinetic hand model with makes the hand skeleton
+in real-time trakcing more robust. However, when occulusion happens, you might have wrong predictions of hand landmarks since some of the fingers are hidden from the webcam.
+When it comes to the classification using support vector machines, an one-vs-one multi-class model is more accurate than one-vs-all though it takes much longer time to fit the
+model. The 92 percent accuracy is good, but we may reach higher if we perform a prudent data augmentation on the dataset. One technical issue here is that American Sign Language - Alphabet
+has some letters that differ from each other just by some rotation (i.e I-J & D-P). Simple augmentation by rotating and shifting may confuse the learning of those letters. Furthermore, 
+some letters are only different from each other because the image is taken from different angle of the same gesture. In this case, support vector machine of linear kernel may not be powerful enough
+to differentiate those letters since they are spatially homogeneous. For further improvement, we can perform some legal agumentation by setting some rules that will not confuse the dataset.
+We can also use a more complex kernel such as histogram intersection for SVM training.
